@@ -2,7 +2,8 @@ import click
 import configparser
 import sys
 import re
-from constants import CREDENTIAL_FAIL, LABELS_FAIL, CREDENTIAL_FILE_FAIL, LABELS_FILE_FAIL, REPO_FAIL
+import requests
+from constants import CREDENTIAL_FAIL, LABELS_FAIL, CREDENTIAL_FILE_FAIL, LABELS_FILE_FAIL, REPO_FAIL, GITHUB_API_ADRESS
 
 def erprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -30,6 +31,9 @@ def filabel(state, delete_old, base, config_auth, config_labels, color, reposlug
 	labelConfig = readConfig(config_labels, {'labels' : []}, LABELS_FILE_FAIL, LABELS_FAIL)
 	repos = loadRepos(reposlugs)
 	print(repos)
+	click.echo(click.style('Hello World!', fg='green'))
+	click.echo(click.style('ATTENTION', blink=True, bold=True))
+	gitHub = GitHub(token = tokenConfig['github']['token'])
 
 # Check reposlug if is in valid format.
 def loadRepos(reposlugs):
@@ -56,6 +60,28 @@ def readConfig(file, sections, fileFail, fail):
 				erprint(fail)
 				exit(1)
 	return config
+
+class GitHub:
+
+	def __init__(self, token, session=None):
+		self.token = token
+		self.session = requests.Session()
+		self.session.auth = self.token_auth()
+		r = self.session.get('https://api.github.com/user')
+		print(r.status_code)
+		r.json()
+		print(r.json())
+	
+	def token_auth(self):
+		def auth(req):
+			req.headers = {
+					'Authorization': 'token ' + self.token,
+					'User-Agent': 'martilad'
+				}
+			return req
+		return auth
+
+	
 
 if __name__ == '__main__':
 	filabel()
