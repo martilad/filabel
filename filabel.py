@@ -33,7 +33,15 @@ def filabel(state, delete_old, base, config_auth, config_labels, color, reposlug
 	print(repos)
 	click.echo(click.style('Hello World!', fg='green'))
 	click.echo(click.style('ATTENTION', blink=True, bold=True))
-	gitHub = GitHub(token = tokenConfig['github']['token'])
+
+	try:
+		gitHub = GitHub(token = tokenConfig['github']['token'])
+		accesibleRepository = gitHub.getUserRepositories()
+		print(accesibleRepository)
+	except GitHubGetException as exception:
+		click.echo(exception.getMessage(), err=True)
+		sys.exit(exception.getCode())
+
 
 # Check reposlug if is in valid format.
 def loadRepos(reposlugs):
@@ -41,7 +49,7 @@ def loadRepos(reposlugs):
 	for repo in reposlugs:
 		if not pattern.match(repo):
 			erprint(REPO_FAIL.format(repo))
-			exit(1)
+			sys.exit(1)
 	return reposlugs
 
 # Try read configuration from config files.
@@ -54,12 +62,25 @@ def readConfig(file, sections, fileFail, fail):
 	for sec in sections:
 		if sec not in config.sections(): 
 			erprint(fail)
-			exit(1)
+			sys.exit(1)
 		for lb in sections[sec]:
 			if lb not in config[sec]:
 				erprint(fail)
-				exit(1)
+				sys.exit(1)
 	return config
+
+class GitHubGetException(Exception):
+
+	def __init__(self, response):
+		self.code = response.status_code
+		self.mess = response.json().get('message', 'No message')
+
+	def getMessage(self):
+		return 'GitHub ERROR - {} - {}'.format(self.code, self.mess)
+
+	def getCode(self):
+		return self.code
+
 
 class GitHub:
 
@@ -67,21 +88,25 @@ class GitHub:
 		self.token = token
 		self.session = requests.Session()
 		self.session.auth = self.token_auth()
-		r = self.session.get('https://api.github.com/user')
-		print(r.status_code)
-		r.json()
-		print(r.json())
-	
+		
 	def token_auth(self):
 		def auth(req):
 			req.headers = {
 					'Authorization': 'token ' + self.token,
-					'User-Agent': 'martilad'
+					'User-Agent': 'Python'
 				}
 			return req
 		return auth
 
-	
+	def getUrl(self, url):
+		r = self.session.get(url)
+		if r.status_code != 200:
+			raise GitHubGetException(r)
+		return r
+
+	def getUserRepositories(self):
+		r = self.getUrl('{}/{}'.format(GITHUB_API_ADRESS, 'user/repos'))
+		return [x['full_name'] for x in r.json()]
 
 if __name__ == '__main__':
 	filabel()
