@@ -30,18 +30,36 @@ def filabel(state, delete_old, base, config_auth, config_labels, color, reposlug
 	tokenConfig = readConfig(config_auth, {'github' : ['token']}, CREDENTIAL_FILE_FAIL, CREDENTIAL_FAIL)
 	labelConfig = readConfig(config_labels, {'labels' : []}, LABELS_FILE_FAIL, LABELS_FAIL)
 	repos = loadRepos(reposlugs)
-	print(repos)
-	click.echo(click.style('Hello World!', fg='green'))
-	click.echo(click.style('ATTENTION', blink=True, bold=True))
-
 	try:
 		gitHub = GitHub(token = tokenConfig['github']['token'])
-		accesibleRepository = gitHub.getUserRepositories()
-		print(accesibleRepository)
+		accesibleRepository = set(gitHub.getUserRepositories())
+		for repo in repos:
+			if repo not in accesibleRepository:
+				Print.printRepoFAIL(repo)
+			else:
+				Print.printRepoOK(repo)
+				if base != None:
+					data = 'state={}&base={}'.format(state, base)
+				else:
+					data = 'state={}'.format(state)
+				for pr in gitHub.getPRForRepo(repo, data):
+					Print.printPROK(pr['html_url'])
+				for issu in gitHub.getIssueAsPR(repo):
+					Print.printPRFAIL(issu['html_url'])
+					Print.printPRFAIL(issu['number'])
+					for label in issu['labels']:
+						print(label['name'])
+
+					if issu['number'] == 2:
+						gitHub.addLabels(repo, 2, {'labels' : []})
+					#for file in gitHub.getFilesforPR(repo, pr['number']):
+						#print(file['filename'])
+
 	except GitHubGetException as exception:
 		click.echo(exception.getMessage(), err=True)
 		sys.exit(exception.getCode())
 
+	
 
 # Check reposlug if is in valid format.
 def loadRepos(reposlugs):
@@ -68,6 +86,24 @@ def readConfig(file, sections, fileFail, fail):
 				erprint(fail)
 				sys.exit(1)
 	return config
+
+class Print:
+
+	@staticmethod
+	def printRepoOK(repo):
+		print(click.style('REPO', bold=True), " ", repo, " - ", click.style('OK', fg='green', bold=True), sep='')
+
+	@staticmethod
+	def printRepoFAIL(repo):
+		print(click.style('REPO', bold=True), " ", repo, " - ", click.style('FAIL', fg='red', bold=True), sep='')
+
+	@staticmethod
+	def printPROK(pr):
+		print("  ", click.style('PR', bold=True), " ", pr, " - ", click.style('OK', fg='green', bold=True), sep='')
+
+	@staticmethod
+	def printPRFAIL(pr):
+		print("  ", click.style('PR', bold=True), " ", pr, " - ", click.style('FAIL', fg='red', bold=True), sep='')
 
 class GitHubGetException(Exception):
 
@@ -104,6 +140,29 @@ class GitHub:
 			raise GitHubGetException(r)
 		return r
 
+	def patchUrl(self, url, data):
+		print(url)
+		r = self.session.patch(url, json=data)
+		if r.status_code != 200:
+			raise GitHubGetException(r)
+		return r
+
+	def getPRForRepo(self, repo, data):
+		r = self.getUrl('{}/repos/{}/pulls?{}'.format(GITHUB_API_ADRESS, repo, data))
+		return r.json()
+
+	def getFilesforPR(self, repo, number):
+		r = self.getUrl('{}/repos/{}/pulls/{}/files'.format(GITHUB_API_ADRESS, repo, number))
+		return r.json()
+
+	def getIssueAsPR(self, repo):
+		r = self.getUrl('{}/repos/{}/issues'.format(GITHUB_API_ADRESS, repo))
+		return [x for x in r.json() if "pull_request" in x]
+
+	def addLabels(self, repo, number, data):
+		r = self.patchUrl('{}/repos/{}/issues/{}'.format(GITHUB_API_ADRESS, repo, number), data)
+		return r.json()
+		
 	def getUserRepositories(self):
 		r = self.getUrl('{}/{}'.format(GITHUB_API_ADRESS, 'user/repos'))
 		return [x['full_name'] for x in r.json()]
