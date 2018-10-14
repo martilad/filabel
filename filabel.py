@@ -1,5 +1,11 @@
 import click
+import configparser
+import sys
+import re
+from constants import CREDENTIAL_FAIL, LABELS_FAIL, CREDENTIAL_FILE_FAIL, LABELS_FILE_FAIL, REPO_FAIL
 
+def erprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 @click.command()
 @click.option('-s', '--state', type=click.Choice(['open', 'close', 'all']), help='Filter pulls by state.  [default: open]', default='open')
@@ -20,8 +26,38 @@ import click
 #  -a, --config-auth FILENAME      File with authorization configuration.
 #  -l, --config-labels FILENAME    File with labels configuration.
 def filabel(state, delete_old, base, config_auth, config_labels, color, reposlugs):
-	"""CLI tool for filename-pattern-based labeling of GitHub PRs"""
-	...
+	tokenConfig = readConfig(config_auth, {'github' : ['token']}, CREDENTIAL_FILE_FAIL, CREDENTIAL_FAIL)
+	labelConfig = readConfig(config_labels, {'labels' : []}, LABELS_FILE_FAIL, LABELS_FAIL)
+	repos = loadRepos(reposlugs)
+	print(repos)
+
+# Check reposlug if is in valid format.
+def loadRepos(reposlugs):
+	pattern = re.compile('.+/.+')
+	for repo in reposlugs:
+		if not pattern.match(repo):
+			erprint(REPO_FAIL.format(repo))
+			exit(1)
+	return reposlugs
+
+# Try read configuration from config files.
+def readConfig(file, sections, fileFail, fail):
+	if file is None: 
+		erprint(fileFail)
+		exit(1)
+	config = configparser.ConfigParser()
+	config.read(file)
+	for sec in sections:
+		if sec not in config.sections(): 
+			erprint(fail)
+			exit(1)
+		for lb in sections[sec]:
+			if lb not in config[sec]:
+				erprint(fail)
+				exit(1)
+	return config
 
 if __name__ == '__main__':
 	filabel()
+
+
