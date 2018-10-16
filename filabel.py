@@ -3,6 +3,7 @@ import configparser
 import sys
 import re
 import requests
+import fnmatch
 from constants import CREDENTIAL_FAIL, LABELS_FAIL, CREDENTIAL_FILE_FAIL, LABELS_FILE_FAIL, REPO_FAIL, GITHUB_API_ADRESS
 
 def erprint(*args, **kwargs):
@@ -38,28 +39,38 @@ def filabel(state, delete_old, base, config_auth, config_labels, color, reposlug
 				Print.printRepoFAIL(repo)
 			else:
 				Print.printRepoOK(repo)
-				if base != None:
-					data = 'state={}&base={}'.format(state, base)
-				else:
-					data = 'state={}'.format(state)
-				for pr in gitHub.getPRForRepo(repo, data):
-					Print.printPROK(pr['html_url'])
-				for issu in gitHub.getIssueAsPR(repo):
-					Print.printPRFAIL(issu['html_url'])
-					Print.printPRFAIL(issu['number'])
-					for label in issu['labels']:
-						print(label['name'])
-
-					if issu['number'] == 2:
-						gitHub.addLabels(repo, 2, {'labels' : []})
-					#for file in gitHub.getFilesforPR(repo, pr['number']):
-						#print(file['filename'])
-
+				labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig)
 	except GitHubGetException as exception:
 		click.echo(exception.getMessage(), err=True)
 		sys.exit(exception.getCode())
 
-	
+def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig):
+	if base != None:
+		data = { 'state' : state, 'base' : base}
+	else:
+		data = { 'state' : state}
+	IS = {value['html_url']:value['number'] for value in gitHub.getIssuesAsPR(repo)}
+	PR = [[x['html_url'], x['number'], IS[x['html_url']]] for x in gitHub.getPRForRepo(repo, data)]
+	for pr in PR:
+		actLabels = [x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])]
+		actFiles = [x['filename'] for x in gitHub.getFilesforPR(repo, pr[1])]
+		knownLabels = {i for i in labelConfig['labels']}
+		addLabels = matchFiles(labelConfig, actFiles)
+		print(knownLabels)
+		print(addLabels)
+		testLabels = [x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])]
+
+		Print.printPROK(pr[0])
+
+def matchFiles(config, files):
+	lb = set()
+	for file in files:
+		for i in config['labels']:
+			for j in config['labels'][i].strip().split('\n'):
+				if fnmatch.fnmatch(file, j.strip()):
+					lb.add(i)
+	return lb
+
 
 # Check reposlug if is in valid format.
 def loadRepos(reposlugs):
@@ -134,37 +145,41 @@ class GitHub:
 			return req
 		return auth
 
-	def getUrl(self, url):
-		r = self.session.get(url)
+	def getUrl(self, url, data):
+		r = self.session.get(url, json=data)
 		if r.status_code != 200:
 			raise GitHubGetException(r)
 		return r
 
-	def patchUrl(self, url, data):
-		print(url)
-		r = self.session.patch(url, json=data)
+	def putUrl(self, url, data):
+		print(data)
+		r = self.session.post(url, json=data)
 		if r.status_code != 200:
 			raise GitHubGetException(r)
 		return r
 
 	def getPRForRepo(self, repo, data):
-		r = self.getUrl('{}/repos/{}/pulls?{}'.format(GITHUB_API_ADRESS, repo, data))
+		r = self.getUrl('{}/repos/{}/pulls'.format(GITHUB_API_ADRESS, repo), data)
 		return r.json()
 
 	def getFilesforPR(self, repo, number):
-		r = self.getUrl('{}/repos/{}/pulls/{}/files'.format(GITHUB_API_ADRESS, repo, number))
+		r = self.getUrl('{}/repos/{}/pulls/{}/files'.format(GITHUB_API_ADRESS, repo, number), {})
 		return r.json()
 
-	def getIssueAsPR(self, repo):
-		r = self.getUrl('{}/repos/{}/issues'.format(GITHUB_API_ADRESS, repo))
+	def getIssuesAsPR(self, repo):
+		r = self.getUrl('{}/repos/{}/issues'.format(GITHUB_API_ADRESS, repo), {})
 		return [x for x in r.json() if "pull_request" in x]
 
-	def addLabels(self, repo, number, data):
-		r = self.patchUrl('{}/repos/{}/issues/{}'.format(GITHUB_API_ADRESS, repo, number), data)
+	def addLabelsForIssue(self, repo, number, labels):
+		r = self.putUrl('{}/repos/{}/issues/{}'.format(GITHUB_API_ADRESS, repo, number), {'labels' : labels})
 		return r.json()
+
+	def getLabelsForIssue(self, repo, number):
+		r = self.getUrl('{}/repos/{}/issues/{}/labels'.format(GITHUB_API_ADRESS, repo, number), {})
+		return [x for x in r.json()]
 		
 	def getUserRepositories(self):
-		r = self.getUrl('{}/{}'.format(GITHUB_API_ADRESS, 'user/repos'))
+		r = self.getUrl('{}/{}'.format(GITHUB_API_ADRESS, 'user/repos'), {})
 		return [x['full_name'] for x in r.json()]
 
 if __name__ == '__main__':
