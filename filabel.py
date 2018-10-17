@@ -36,11 +36,8 @@ def filabel(state, delete_old, base, config_auth, config_labels, color, reposlug
 		gitHub = GitHub(token = tokenConfig['github']['token'])
 		accesibleRepository = set(gitHub.getUserRepositories())
 		for repo in repos:
-			if repo not in accesibleRepository:
-				Print.printRepoFAIL(repo)
-			else:
-				Print.printRepoOK(repo)
-				labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels)
+			Print.printRepoOK(repo)
+			labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels)
 	except GitHubGetException as exception:
 		click.echo(exception.getMessage(), err=True)
 		sys.exit(exception.getCode())
@@ -118,11 +115,11 @@ def readConfig(file, sections, fileFail, fail):
 	config.read(file)
 	for sec in sections:
 		if sec not in config.sections(): 
-			erclick.echo(fail)
+			erprint(fail)
 			sys.exit(1)
 		for lb in sections[sec]:
 			if lb not in config[sec]:
-				erclick.echo(fail)
+				erprint(fail)
 				sys.exit(1)
 	return config
 
