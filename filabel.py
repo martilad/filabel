@@ -12,7 +12,7 @@ def erprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 @click.command()
-@click.option('-s', '--state', type=click.Choice(['open', 'close', 'all']), help='Filter pulls by state.  [default: open]', default='open')
+@click.option('-s', '--state', type=click.Choice(['open', 'closed', 'all']), help='Filter pulls by state.  [default: open]', default='open')
 @click.option('-d', '--delete-old/--no-delete-old', help='Delete labels that do not match anymore.\n [default: True]', default=True)
 @click.option('-b', '--base', metavar='BRANCH', help='Filter pulls by base (PR target) branch name.')
 
@@ -53,7 +53,7 @@ def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels
 		Print.printRepoOK(repo)
 	except Exception as exception:
 		Print.printRepoFAIL(repo)
-		#traceback.print_exc()
+		traceback.print_exc()
 		return
 	for pr in PR:
 		try:
@@ -78,7 +78,7 @@ def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels
 				Print.printPRFAIL(pr[0])
 		except Exception as exception:
 			Print.printPRFAIL(pr[0])
-			#traceback.print_exc()
+			traceback.print_exc()
 			continue
 	
 def matchFiles(config, files):

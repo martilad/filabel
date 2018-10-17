@@ -31,7 +31,8 @@ class GitHub:
 		return auth
 
 	def getUrl(self, url, data):
-		data = []
+		print(data)
+		lists = []
 		page = 1
 		while True:
 			r = self.session.get(url+'?page={}'.format(page), json=data)
@@ -39,10 +40,10 @@ class GitHub:
 				raise GitHubGetException(r)
 			r = [x for x in r.json()]
 			if len(r) == 0:
-				return data
-			data.extend(r)
+				return lists
+			lists.extend(r)
 			page+=1
-		return data
+		return lists
 
 	def putUrl(self, url, data):
 		r = self.session.post(url, json=data)
