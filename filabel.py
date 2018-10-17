@@ -3,6 +3,7 @@ import configparser
 import sys
 import re
 import fnmatch
+import traceback
 from constants import CREDENTIAL_FAIL, LABELS_FAIL, CREDENTIAL_FILE_FAIL, LABELS_FILE_FAIL, REPO_FAIL, GITHUB_API_ADRESS
 from github import GitHub, GitHubGetException
 from print import Print
@@ -52,9 +53,9 @@ def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels
 		Print.printRepoOK(repo)
 	except Exception as exception:
 		Print.printRepoFAIL(repo)
+		#traceback.print_exc()
 		return
 	for pr in PR:
-		print(PR)
 		try:
 			actLabels = {x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])}
 			actFiles = [x['filename'] for x in gitHub.getFilesforPR(repo, pr[1])]
@@ -77,6 +78,7 @@ def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels
 				Print.printPRFAIL(pr[0])
 		except Exception as exception:
 			Print.printPRFAIL(pr[0])
+			#traceback.print_exc()
 			continue
 	
 def matchFiles(config, files):

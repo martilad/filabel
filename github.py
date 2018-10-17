@@ -31,10 +31,18 @@ class GitHub:
 		return auth
 
 	def getUrl(self, url, data):
-		r = self.session.get(url, json=data)
-		if r.status_code != 200:
-			raise GitHubGetException(r)
-		return r
+		data = []
+		page = 1
+		while True:
+			r = self.session.get(url+'?page={}'.format(page), json=data)
+			if r.status_code != 200:
+				raise GitHubGetException(r)
+			r = [x for x in r.json()]
+			if len(r) == 0:
+				return data
+			data.extend(r)
+			page+=1
+		return data
 
 	def putUrl(self, url, data):
 		r = self.session.post(url, json=data)
@@ -43,25 +51,19 @@ class GitHub:
 		return r
 
 	def getPRForRepo(self, repo, data):
-		r = self.getUrl('{}/repos/{}/pulls'.format(GITHUB_API_ADRESS, repo), data)
-		return r.json()
+		return self.getUrl('{}/repos/{}/pulls'.format(GITHUB_API_ADRESS, repo), data)
 
 	def getFilesforPR(self, repo, number):
-		r = self.getUrl('{}/repos/{}/pulls/{}/files'.format(GITHUB_API_ADRESS, repo, number), {})
-		return r.json()
+		return self.getUrl('{}/repos/{}/pulls/{}/files'.format(GITHUB_API_ADRESS, repo, number), {})
 
 	def getIssuesAsPR(self, repo):
-		r = self.getUrl('{}/repos/{}/issues'.format(GITHUB_API_ADRESS, repo), {})
-		return [x for x in r.json() if "pull_request" in x]
+		return [x for x in self.getUrl('{}/repos/{}/issues'.format(GITHUB_API_ADRESS, repo), {}) if "pull_request" in x]
 
 	def addLabelsForIssue(self, repo, number, labels):
-		r = self.putUrl('{}/repos/{}/issues/{}'.format(GITHUB_API_ADRESS, repo, number), {'labels' : labels})
-		return r.json()
+		return self.putUrl('{}/repos/{}/issues/{}'.format(GITHUB_API_ADRESS, repo, number), {'labels' : labels})
 
 	def getLabelsForIssue(self, repo, number):
-		r = self.getUrl('{}/repos/{}/issues/{}/labels'.format(GITHUB_API_ADRESS, repo, number), {})
-		return [x for x in r.json()]
+		return self.getUrl('{}/repos/{}/issues/{}/labels'.format(GITHUB_API_ADRESS, repo, number), {})
 		
 	def getUserRepositories(self):
-		r = self.getUrl('{}/{}'.format(GITHUB_API_ADRESS, 'user/repos'), {})
-		return [x['full_name'] for x in r.json()]
+		return [x['full_name'] for x in self.getUrl('{}/{}'.format(GITHUB_API_ADRESS, 'user/repos'), {})]
