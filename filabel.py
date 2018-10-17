@@ -75,17 +75,17 @@ def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels
 			Print.printPROK(pr[0])
 			printLabels(tp)
 		else:
-			Print.printPRFAIL(pr[0])
+			printPRFAIL(pr[0])
 
 def printLabels(tp):
 	tp.sort(key=lambda x:x[0])
 	for i in tp:
 		if i[1] == '=':
-			print("    ", click.style(i[1]), " ", click.style(i[0]), sep='')
+			click.echo("    " + click.style(i[1]) + " " + click.style(i[0]))
 		elif i[1] == '+':
-			print("    ", click.style(i[1],fg='green'), " ", click.style(i[0], fg='green'), sep='')
+			click.echo("    " + click.style(i[1],fg='green') +  " " + click.style(i[0], fg='green'))
 		elif i[1] == '-':
-			print("    ", click.style(i[1],fg='red'), " ", click.style(i[0], fg='red'), sep='')
+			click.echo("    " + click.style(i[1],fg='red') + " " + click.style(i[0], fg='red'))
 		else:
 			raise ValueError("Program Label ID fail." + i[1])
 
@@ -112,17 +112,17 @@ def loadRepos(reposlugs):
 # Try read configuration from config files.
 def readConfig(file, sections, fileFail, fail):
 	if file is None: 
-		erprint(fileFail)
+		erclick.echo(fileFail)
 		exit(1)
 	config = configparser.ConfigParser()
 	config.read(file)
 	for sec in sections:
 		if sec not in config.sections(): 
-			erprint(fail)
+			erclick.echo(fail)
 			sys.exit(1)
 		for lb in sections[sec]:
 			if lb not in config[sec]:
-				erprint(fail)
+				erclick.echo(fail)
 				sys.exit(1)
 	return config
 
@@ -130,19 +130,19 @@ class Print:
 
 	@staticmethod
 	def printRepoOK(repo):
-		print(click.style('REPO', bold=True), " ", repo, " - ", click.style('OK', fg='green', bold=True), sep='')
+		click.echo(click.style('REPO', bold=True) +  " " + repo + " - " + click.style('OK', fg='green', bold=True))
 
 	@staticmethod
 	def printRepoFAIL(repo):
-		print(click.style('REPO', bold=True), " ", repo, " - ", click.style('FAIL', fg='red', bold=True), sep='')
+		click.echo(click.style('REPO', bold=True) + " " + repo + " - " + click.style('FAIL', fg='red', bold=True))
 
 	@staticmethod
 	def printPROK(pr):
-		print("  ", click.style('PR', bold=True), " ", pr, " - ", click.style('OK', fg='green', bold=True), sep='')
+		click.echo("  " + click.style('PR', bold=True) + " " + pr + " - " + click.style('OK', fg='green', bold=True))
 
 	@staticmethod
 	def printPRFAIL(pr):
-		print("  ", click.style('PR', bold=True), " ", pr, " - ", click.style('FAIL', fg='red', bold=True), sep='')
+		click.echo("  " + click.style('PR', bold=True) + " " + pr + " - " + click.style('FAIL', fg='red', bold=True))
 
 class GitHubGetException(Exception):
 
