@@ -2,9 +2,10 @@ import click
 import configparser
 import sys
 import re
-import requests
 import fnmatch
 from constants import CREDENTIAL_FAIL, LABELS_FAIL, CREDENTIAL_FILE_FAIL, LABELS_FILE_FAIL, REPO_FAIL, GITHUB_API_ADRESS
+from github import GitHub, GitHubGetException
+from print import Print
 
 def erprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -34,9 +35,7 @@ def filabel(state, delete_old, base, config_auth, config_labels, color, reposlug
 	knownLabels = {i for i in labelConfig['labels']}
 	try:
 		gitHub = GitHub(token = tokenConfig['github']['token'])
-		accesibleRepository = set(gitHub.getUserRepositories())
 		for repo in repos:
-			Print.printRepoOK(repo)
 			labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels)
 	except GitHubGetException as exception:
 		click.echo(exception.getMessage(), err=True)
@@ -47,46 +46,39 @@ def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels
 		data = { 'state' : state, 'base' : base}
 	else:
 		data = { 'state' : state}
-	IS = {value['html_url']:value['number'] for value in gitHub.getIssuesAsPR(repo)}
-	PR = [[x['html_url'], x['number'], IS[x['html_url']]] for x in gitHub.getPRForRepo(repo, data)]
+	try:
+		IS = {value['html_url']:value['number'] for value in gitHub.getIssuesAsPR(repo)}
+		PR = [[x['html_url'], x['number'], IS[x['html_url']]] for x in gitHub.getPRForRepo(repo, data) ]
+		Print.printRepoOK(repo)
+	except Exception as exception:
+		Print.printRepoFAIL(repo)
+		return
 	for pr in PR:
-		actLabels = {x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])}
-		actFiles = [x['filename'] for x in gitHub.getFilesforPR(repo, pr[1])]
-		addLabels = matchFiles(labelConfig, actFiles)
-		PRknownLabels = actLabels & knownLabels
-		keepLabelsNotKnow = actLabels - knownLabels
-
-		deleteLabels = set()
-		keepLabels = PRknownLabels & addLabels
-		if delete_old:
-			deleteLabels = PRknownLabels - addLabels
-		addLabels = addLabels - PRknownLabels
-
-		tp = [[x, '-'] for x in deleteLabels] + [[x, '+'] for x in addLabels] + [[x, '='] for x in keepLabels]
-		
-		pushLabelsSet = (keepLabelsNotKnow | keepLabels | addLabels | (PRknownLabels - addLabels))
-		gitHub.addLabelsForIssue(repo, pr[2], [x for x in pushLabelsSet])
-
-		testLabels = [x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])]
-		if (set(testLabels) ==  pushLabelsSet):
-			Print.printPROK(pr[0])
-			printLabels(tp)
-		else:
-			printPRFAIL(pr[0])
-
-def printLabels(tp):
-	tp.sort(key=lambda x:x[0])
-	for i in tp:
-		if i[1] == '=':
-			click.echo("    " + click.style(i[1]) + " " + click.style(i[0]))
-		elif i[1] == '+':
-			click.echo("    " + click.style(i[1],fg='green') +  " " + click.style(i[0], fg='green'))
-		elif i[1] == '-':
-			click.echo("    " + click.style(i[1],fg='red') + " " + click.style(i[0], fg='red'))
-		else:
-			raise ValueError("Program Label ID fail." + i[1])
-
-
+		print(PR)
+		try:
+			actLabels = {x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])}
+			actFiles = [x['filename'] for x in gitHub.getFilesforPR(repo, pr[1])]
+			addLabels = matchFiles(labelConfig, actFiles)
+			PRknownLabels = actLabels & knownLabels
+			keepLabelsNotKnow = actLabels - knownLabels
+			deleteLabels = set()
+			keepLabels = PRknownLabels & addLabels
+			if delete_old:
+				deleteLabels = PRknownLabels - addLabels
+			addLabels = addLabels - PRknownLabels
+			tp = [[x, '-'] for x in deleteLabels] + [[x, '+'] for x in addLabels] + [[x, '='] for x in keepLabels]
+			pushLabelsSet = (keepLabelsNotKnow | keepLabels | addLabels | (PRknownLabels - addLabels))
+			gitHub.addLabelsForIssue(repo, pr[2], [x for x in pushLabelsSet])
+			testLabels = [x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])]
+			if (set(testLabels) ==  pushLabelsSet):
+				Print.printPROK(pr[0])
+				Print.printLabels(tp)
+			else:
+				Print.printPRFAIL(pr[0])
+		except Exception as exception:
+			Print.printPRFAIL(pr[0])
+			continue
+	
 def matchFiles(config, files):
 	lb = set()
 	for file in files:
@@ -123,88 +115,6 @@ def readConfig(file, sections, fileFail, fail):
 				sys.exit(1)
 	return config
 
-class Print:
-
-	@staticmethod
-	def printRepoOK(repo):
-		click.echo(click.style('REPO', bold=True) +  " " + repo + " - " + click.style('OK', fg='green', bold=True))
-
-	@staticmethod
-	def printRepoFAIL(repo):
-		click.echo(click.style('REPO', bold=True) + " " + repo + " - " + click.style('FAIL', fg='red', bold=True))
-
-	@staticmethod
-	def printPROK(pr):
-		click.echo("  " + click.style('PR', bold=True) + " " + pr + " - " + click.style('OK', fg='green', bold=True))
-
-	@staticmethod
-	def printPRFAIL(pr):
-		click.echo("  " + click.style('PR', bold=True) + " " + pr + " - " + click.style('FAIL', fg='red', bold=True))
-
-class GitHubGetException(Exception):
-
-	def __init__(self, response):
-		self.code = response.status_code
-		self.mess = response.json().get('message', 'No message')
-
-	def getMessage(self):
-		return 'GitHub ERROR - {} - {}'.format(self.code, self.mess)
-
-	def getCode(self):
-		return self.code
-
-
-class GitHub:
-
-	def __init__(self, token, session=None):
-		self.token = token
-		self.session = requests.Session()
-		self.session.auth = self.token_auth()
-		
-	def token_auth(self):
-		def auth(req):
-			req.headers = {
-					'Authorization': 'token ' + self.token,
-					'User-Agent': 'Python'
-				}
-			return req
-		return auth
-
-	def getUrl(self, url, data):
-		r = self.session.get(url, json=data)
-		if r.status_code != 200:
-			raise GitHubGetException(r)
-		return r
-
-	def putUrl(self, url, data):
-		r = self.session.post(url, json=data)
-		if r.status_code != 200:
-			raise GitHubGetException(r)
-		return r
-
-	def getPRForRepo(self, repo, data):
-		r = self.getUrl('{}/repos/{}/pulls'.format(GITHUB_API_ADRESS, repo), data)
-		return r.json()
-
-	def getFilesforPR(self, repo, number):
-		r = self.getUrl('{}/repos/{}/pulls/{}/files'.format(GITHUB_API_ADRESS, repo, number), {})
-		return r.json()
-
-	def getIssuesAsPR(self, repo):
-		r = self.getUrl('{}/repos/{}/issues'.format(GITHUB_API_ADRESS, repo), {})
-		return [x for x in r.json() if "pull_request" in x]
-
-	def addLabelsForIssue(self, repo, number, labels):
-		r = self.putUrl('{}/repos/{}/issues/{}'.format(GITHUB_API_ADRESS, repo, number), {'labels' : labels})
-		return r.json()
-
-	def getLabelsForIssue(self, repo, number):
-		r = self.getUrl('{}/repos/{}/issues/{}/labels'.format(GITHUB_API_ADRESS, repo, number), {})
-		return [x for x in r.json()]
-		
-	def getUserRepositories(self):
-		r = self.getUrl('{}/{}'.format(GITHUB_API_ADRESS, 'user/repos'), {})
-		return [x['full_name'] for x in r.json()]
 
 if __name__ == '__main__':
 	filabel()
