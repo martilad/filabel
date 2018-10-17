@@ -31,6 +31,7 @@ def filabel(state, delete_old, base, config_auth, config_labels, color, reposlug
 	tokenConfig = readConfig(config_auth, {'github' : ['token']}, CREDENTIAL_FILE_FAIL, CREDENTIAL_FAIL)
 	labelConfig = readConfig(config_labels, {'labels' : []}, LABELS_FILE_FAIL, LABELS_FAIL)
 	repos = loadRepos(reposlugs)
+	knownLabels = {i for i in labelConfig['labels']}
 	try:
 		gitHub = GitHub(token = tokenConfig['github']['token'])
 		accesibleRepository = set(gitHub.getUserRepositories())
@@ -39,12 +40,12 @@ def filabel(state, delete_old, base, config_auth, config_labels, color, reposlug
 				Print.printRepoFAIL(repo)
 			else:
 				Print.printRepoOK(repo)
-				labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig)
+				labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels)
 	except GitHubGetException as exception:
 		click.echo(exception.getMessage(), err=True)
 		sys.exit(exception.getCode())
 
-def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig):
+def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels):
 	if base != None:
 		data = { 'state' : state, 'base' : base}
 	else:
@@ -52,15 +53,42 @@ def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig):
 	IS = {value['html_url']:value['number'] for value in gitHub.getIssuesAsPR(repo)}
 	PR = [[x['html_url'], x['number'], IS[x['html_url']]] for x in gitHub.getPRForRepo(repo, data)]
 	for pr in PR:
-		actLabels = [x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])]
+		actLabels = {x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])}
 		actFiles = [x['filename'] for x in gitHub.getFilesforPR(repo, pr[1])]
-		knownLabels = {i for i in labelConfig['labels']}
 		addLabels = matchFiles(labelConfig, actFiles)
-		print(knownLabels)
-		print(addLabels)
-		testLabels = [x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])]
+		PRknownLabels = actLabels & knownLabels
+		keepLabelsNotKnow = actLabels - knownLabels
 
-		Print.printPROK(pr[0])
+		deleteLabels = set()
+		keepLabels = PRknownLabels & addLabels
+		if delete_old:
+			deleteLabels = PRknownLabels - addLabels
+		addLabels = addLabels - PRknownLabels
+
+		tp = [[x, '-'] for x in deleteLabels] + [[x, '+'] for x in addLabels] + [[x, '='] for x in keepLabels]
+		
+		pushLabelsSet = (keepLabelsNotKnow | keepLabels | addLabels | (PRknownLabels - addLabels))
+		gitHub.addLabelsForIssue(repo, pr[2], [x for x in pushLabelsSet])
+
+		testLabels = [x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])]
+		if (set(testLabels) ==  pushLabelsSet):
+			Print.printPROK(pr[0])
+			printLabels(tp)
+		else:
+			Print.printPRFAIL(pr[0])
+
+def printLabels(tp):
+	tp.sort(key=lambda x:x[0])
+	for i in tp:
+		if i[1] == '=':
+			print("    ", click.style(i[1]), " ", click.style(i[0]), sep='')
+		elif i[1] == '+':
+			print("    ", click.style(i[1],fg='green'), " ", click.style(i[0], fg='green'), sep='')
+		elif i[1] == '-':
+			print("    ", click.style(i[1],fg='red'), " ", click.style(i[0], fg='red'), sep='')
+		else:
+			raise ValueError("Program Label ID fail." + i[1])
+
 
 def matchFiles(config, files):
 	lb = set()
@@ -152,7 +180,6 @@ class GitHub:
 		return r
 
 	def putUrl(self, url, data):
-		print(data)
 		r = self.session.post(url, json=data)
 		if r.status_code != 200:
 			raise GitHubGetException(r)
