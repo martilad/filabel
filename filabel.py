@@ -8,11 +8,22 @@ from constants import CREDENTIAL_FAIL, LABELS_FAIL, CREDENTIAL_FILE_FAIL, LABELS
 from github import GitHub, GitHubGetException
 from print import Print
 from flask import Flask
+
 app = Flask(__name__)
 
-@app.route('/')
+@app.before_first_request
+def setup():
+    print("setup")
+
+@app.route('/', methods=['GET'])
 def index():
-    return 'MI-PYT je nejlepší předmět na FITu!'
+	return "Test pyt"
+    #repos = flask.current_app.repos
+    #return flask.render_template('index.html', repos=repos)
+
+@app.route('/', methods=['POST'])
+def hookAccept():
+    print("hook")
 
 def erprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
