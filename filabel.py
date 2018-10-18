@@ -13,13 +13,10 @@ def erprint(*args, **kwargs):
 
 @click.command()
 @click.option('-s', '--state', type=click.Choice(['open', 'closed', 'all']), help='Filter pulls by state.  [default: open]', default='open')
-@click.option('-d', '--delete-old/--no-delete-old', help='Delete labels that do not match anymore.\n [default: True]', default=True)
+@click.option('-d/-D', '--delete-old/--no-delete-old', help='Delete labels that do not match anymore.\n [default: True]', default=True)
 @click.option('-b', '--base', metavar='BRANCH', help='Filter pulls by base (PR target) branch name.')
-
 @click.option('-a', '--config-auth', metavar='FILENAME', help='File with authorization configuration.')
 @click.option('-l', '--config-labels', metavar='FILENAME', help='File with labels configuration.')
-#prompt co se vypise pro spusteni
-@click.option('--color/--no-color', help='make colored output')
 @click.argument('REPOSLUGS', nargs=-1)
 #-s, --state [open|closed|all]   Filter pulls by state.  [default: open]
 #  -d, --delete-old / -D, --no-delete-old
@@ -29,7 +26,14 @@ def erprint(*args, **kwargs):
 #                                  name.
 #  -a, --config-auth FILENAME      File with authorization configuration.
 #  -l, --config-labels FILENAME    File with labels configuration.
-def filabel(state, delete_old, base, config_auth, config_labels, color, reposlugs):
+def filabel(state, delete_old, base, config_auth, config_labels, reposlugs):
+	"""CLI tool for filename-pattern-based labeling of GitHub PRs"""
+	if config_auth is None: 
+		erprint(CREDENTIAL_FILE_FAIL)
+		exit(1)
+	if config_labels is None: 
+		erprint(LABELS_FILE_FAIL)
+		exit(1)
 	tokenConfig = readConfig(config_auth, {'github' : ['token']}, CREDENTIAL_FILE_FAIL, CREDENTIAL_FAIL)
 	labelConfig = readConfig(config_labels, {'labels' : []}, LABELS_FILE_FAIL, LABELS_FAIL)
 	repos = loadRepos(reposlugs)
@@ -104,9 +108,6 @@ def loadRepos(reposlugs):
 
 # Try read configuration from config files.
 def readConfig(file, sections, fileFail, fail):
-	if file is None: 
-		erclick.echo(fileFail)
-		exit(1)
 	config = configparser.ConfigParser()
 	config.read(file)
 	for sec in sections:
