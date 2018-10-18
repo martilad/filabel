@@ -48,12 +48,12 @@ def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels
 	else:
 		data = { 'state' : state}
 	try:
-		IS = {value['html_url']:value['number'] for value in gitHub.getIssuesAsPR(repo)}
+		IS = {value['html_url']:value['number'] for value in gitHub.getIssuesAsPR(repo, data)}
 		PR = [[x['html_url'], x['number'], IS[x['html_url']]] for x in gitHub.getPRForRepo(repo, data) ]
 		Print.printRepoOK(repo)
 	except Exception as exception:
 		Print.printRepoFAIL(repo)
-		traceback.print_exc()
+		#traceback.print_exc()
 		return
 	for pr in PR:
 		try:
@@ -68,7 +68,9 @@ def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels
 				deleteLabels = PRknownLabels - addLabels
 			addLabels = addLabels - PRknownLabels
 			tp = [[x, '-'] for x in deleteLabels] + [[x, '+'] for x in addLabels] + [[x, '='] for x in keepLabels]
-			pushLabelsSet = (keepLabelsNotKnow | keepLabels | addLabels | (PRknownLabels - addLabels))
+			pushLabelsSet = (keepLabelsNotKnow | keepLabels | addLabels)
+			if not delete_old:
+				pushLabelsSet = pushLabelsSet | (PRknownLabels - addLabels)
 			gitHub.addLabelsForIssue(repo, pr[2], [x for x in pushLabelsSet])
 			testLabels = [x['name'] for x in gitHub.getLabelsForIssue(repo, pr[2])]
 			if (set(testLabels) ==  pushLabelsSet):
@@ -78,7 +80,7 @@ def labelOneRepo(repo, gitHub, base, state, delete_old, labelConfig, knownLabels
 				Print.printPRFAIL(pr[0])
 		except Exception as exception:
 			Print.printPRFAIL(pr[0])
-			traceback.print_exc()
+			#traceback.print_exc()
 			continue
 	
 def matchFiles(config, files):

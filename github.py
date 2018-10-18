@@ -31,11 +31,11 @@ class GitHub:
 		return auth
 
 	def getUrl(self, url, data):
-		print(data)
 		lists = []
 		page = 1
 		while True:
-			r = self.session.get(url+'?page={}'.format(page), json=data)
+			data['page'] = page
+			r = self.session.get(url, params=data)
 			if r.status_code != 200:
 				raise GitHubGetException(r)
 			r = [x for x in r.json()]
@@ -57,8 +57,8 @@ class GitHub:
 	def getFilesforPR(self, repo, number):
 		return self.getUrl('{}/repos/{}/pulls/{}/files'.format(GITHUB_API_ADRESS, repo, number), {})
 
-	def getIssuesAsPR(self, repo):
-		return [x for x in self.getUrl('{}/repos/{}/issues'.format(GITHUB_API_ADRESS, repo), {}) if "pull_request" in x]
+	def getIssuesAsPR(self, repo, data):
+		return [x for x in self.getUrl('{}/repos/{}/issues'.format(GITHUB_API_ADRESS, repo), data) if "pull_request" in x]
 
 	def addLabelsForIssue(self, repo, number, labels):
 		return self.putUrl('{}/repos/{}/issues/{}'.format(GITHUB_API_ADRESS, repo, number), {'labels' : labels})
