@@ -7,6 +7,12 @@ import traceback
 from constants import CREDENTIAL_FAIL, LABELS_FAIL, CREDENTIAL_FILE_FAIL, LABELS_FILE_FAIL, REPO_FAIL, GITHUB_API_ADRESS
 from github import GitHub, GitHubGetException
 from print import Print
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return 'MI-PYT je nejlepší předmět na FITu!'
 
 def erprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
