@@ -2,6 +2,7 @@ import click
 import configparser
 import sys
 import re
+import os
 import fnmatch
 import traceback
 from constants import CREDENTIAL_FAIL, LABELS_FAIL, CREDENTIAL_FILE_FAIL, LABELS_FILE_FAIL, REPO_FAIL, GITHUB_API_ADRESS
@@ -13,11 +14,12 @@ app = Flask(__name__)
 
 @app.before_first_request
 def setup():
-    print("setup")
+	app.test = "test"
+    #configFileNames = os.environ.get('FILABEL_CONFIG', None)
 
 @app.route('/', methods=['GET'])
 def index():
-	return "Test pyt"
+	return "<html> <head> </head><body> <h1>user: {}</h1></body></html>".format(app.test)
     #repos = flask.current_app.repos
     #return flask.render_template('index.html', repos=repos)
 
