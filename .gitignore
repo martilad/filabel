@@ -5,3 +5,4 @@ config/auth.cfg
 dist
 build
 *.egg-info
+.eggs

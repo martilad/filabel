@@ -7,7 +7,7 @@ with open('README.md') as f:
 
 setup(
     name='filabel_martilad',
-    version='0.1',
+    version='0.3',
     description='Tool for labeling PRs at GitHub by globs.',
     long_description=long_description,
     author='Ladislav Martínek',
@@ -20,6 +20,7 @@ setup(
         'filabel': [
             'static/*.css',
             'templates/*.html',
+            '../test/fixtures/*'
         ]
     },
     entry_points={
@@ -32,6 +33,9 @@ setup(
         'configparser', 
         'click', 
         'requests'],
+    setup_requires=[
+        'pytest-runner',
+    ],
     tests_require=[
         'pytest'
     ],
@@ -48,6 +52,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Natural Language :: English',
         'Topic :: Software Development',
+        'Development Status :: 4 - Beta',
         ],
     zip_safe=False,
 )
