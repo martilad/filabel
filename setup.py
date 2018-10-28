@@ -7,7 +7,7 @@ with open('README.md') as f:
 
 setup(
     name='filabel_martilad',
-    version='0.3',
+    version='0.4',
     description='Tool for labeling PRs at GitHub by globs.',
     long_description=long_description,
     author='Ladislav Martínek',
