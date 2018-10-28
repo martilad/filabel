@@ -38,28 +38,28 @@ def process_webhook_pr(payload):
         pr_url = pull_request['url'].split('/')  # no repo field in payload!
         owner = pr_url[-4]
         repo = pr_url[-3]
-        reposlug = f'{owner}/{repo}'
+        reposlug = '{}/{}'.format(owner, repo)
 
         if action not in ('opened', 'synchronize'):
             flask.current_app.logger.info(
-                f'Action {action} from {reposlug}#{pr_number} skipped'
+                'Action {} from {}#{} skipped'.format(action, reposlug, pr_number)
             )
             return 'Accepted but action not processed', 202
 
         filabel.run_pr(owner, repo, pull_request)
 
         flask.current_app.logger.info(
-            f'Action {action} from {reposlug}#{pr_number} processed'
+            'Action {} from {}#{} processed'.format(action, reposlug, pr_number)
         )
         return 'PR successfully filabeled', 200
     except (KeyError, IndexError):
         flask.current_app.logger.info(
-            f'Incorrect data entity from IP {flask.request.remote_addr}'
+            'Incorrect data entity from IP {}'.format(flask.request.remote_addr)
         )
         flask.abort(422, 'Missing required payload fields')
     except Exception:
         flask.current_app.logger.error(
-            f'Error occurred while processing {repo}#{pr_number}'
+            'Error occurred while processing {}#{}'.format(repo, pr_number)
         )
         flask.abort(500, 'Processing PR error')
 
@@ -74,12 +74,12 @@ def process_webhook_ping(payload):
         repo = payload['repository']['full_name']
         hook_id = payload['hook_id']
         flask.current_app.logger.info(
-            f'Accepting PING from {repo}#WH-{hook_id}'
+            'Accepting PING from {}#WH-{}'.format(repo, hook_id)
         )
         return 'PONG', 200
     except KeyError:
         flask.current_app.logger.info(
-            f'Incorrect data entity from IP {flask.request.remote_addr}'
+            'Incorrect data entity from IP {}'.format(flask.request.remote_addr)
         )
         flask.abort(422, 'Missing payload contents')
 
@@ -149,7 +149,7 @@ def github_user_link_filter(github_user):
     """
     url = flask.escape(github_user['html_url'])
     login = flask.escape(github_user['login'])
-    return jinja2.Markup(f'<a href="{url}" target="_blank">{login}</a>')
+    return jinja2.Markup('<a href="{}" target="_blank">{}</a>'.format(url, login))
 
 @app.route('/', methods=['GET'])
 def index():
@@ -177,12 +177,12 @@ def webhook_listener():
             flask.request.data, signature, secret
     ):
         flask.current_app.logger.warning(
-            f'Attempt with bad secret from IP {flask.request.remote_addr}'
+            'Attempt with bad secret from IP {}'.format(flask.request.remote_addr)
         )
         flask.abort(401, 'Bad webhook secret')
 
     if event not in webhook_processors:
         supported = ', '.join(webhook_processors.keys())
-        flask.abort(400, f'Event not supported (supported: {supported})')
+        flask.abort(400, 'Event not supported (supported: {})'.format(supported))
 
     return webhook_processors[event](payload)
