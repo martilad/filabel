@@ -95,21 +95,37 @@ def create_app():
     """
     app = flask.Flask(__name__)
     cfg = configparser.ConfigParser()
-    if 'FILABEL_CONFIG' not in os.environ:
+    """if 'FILABEL_CONFIG' not in os.environ:
         app.logger.critical('Config not supplied by envvar FILABEL_CONFIG')
-        exit(1)
-    configs = os.environ['FILABEL_CONFIG'].split(':')
-    cfg.read(configs)
+        exit(1)"""
+    app.cfg = cfg
+    config_filename=os.getenv('FILABEL_CONFIG', None)
+    if config_filename != None:
+        configs = os.environ['FILABEL_CONFIG'].split(':')
+        cfg.read(configs)
 
+    return app
+
+
+# Importing, FILABEL_CONFIG must be set!
+app = create_app()
+
+
+
+@app.before_first_request
+def finalize_setup():
+    if 'labels' not in app.cfg:
+        app.logger.critical('Labels configuration not supplied!', err=True)
+        exit(1)
     try:
-        app.config['labels'] = parse_labels(cfg)
+        app.config['labels'] = parse_labels(app.cfg)
     except Exception:
         app.logger.critical('Labels configuration not usable!', err=True)
         exit(1)
 
     try:
-        app.config['github_token'] = cfg.get('github', 'token')
-        app.config['secret'] = cfg.get('github', 'secret', fallback=None)
+        app.config['github_token'] = app.cfg.get('github', 'token')
+        app.config['secret'] = app.cfg.get('github', 'secret', fallback=None)
     except Exception:
         app.logger.critical('Auth configuration not usable!', err=True)
         exit(1)
@@ -122,12 +138,6 @@ def create_app():
     except Exception:
         app.logger.critical('Bad token: could not get GitHub user!', err=True)
         exit(1)
-    return app
-
-
-# Importing, FILABEL_CONFIG must be set!
-app = create_app()
-
 
 
 @app.template_filter('github_user_link')
