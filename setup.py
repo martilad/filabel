@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 with open('README.md') as f:
@@ -12,24 +12,42 @@ setup(
     long_description=long_description,
     author='Ladislav Martínek',
     author_email='martilad@fit.cvut.cz',
-    keywords='GitHub, PRs, labels',
+    keywords='GitHub, PRs, labels, GitHubAPI',
     license='MIT',
     url='https://github.com/martilad/filabel',
-    packages=['filabel'],
-    install_requires=['flask', 'configparser', 'click', 'requests'],
+    packages=find_packages(),
+    package_data={
+        'filabel': [
+            'static/*.css',
+            'templates/*.html',
+        ]
+    },
+    entry_points={
+        'console_scripts': [
+            'filabel = filabel:main',
+        ]
+    },
+    install_requires=[
+        'flask', 
+        'configparser', 
+        'click', 
+        'requests'],
+    tests_require=[
+        'pytest'
+    ],
     classifiers=[
-        'Intended Audience :: Developers',
-        'License :: MIT',
-        'Operating System :: POSIX :: Linux',
+        'Intended Audience :: Education',
+        'Intended Audience :: Information Technology',
+        'Environment :: Console',
+        'Environment :: Web Environment',
+        'Framework :: Flask',
+        'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
-        'Topic :: Software Development :: Libraries',
+        'Natural Language :: English',
+        'Topic :: Software Development',
         ],
     zip_safe=False,
-    entry_points={
-        'console_scripts': [
-        ],
-    },
 )
