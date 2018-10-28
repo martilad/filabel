@@ -158,10 +158,10 @@ def stylize_label_change(change_type, label):
     label: name of changed label
     """
     if change_type == Change.ADD:
-        return click.style(f'+ {label}', fg='green')
+        return click.style('+ {}'.format(label), fg='green')
     if change_type == Change.DELETE:
-        return click.style(f'- {label}', fg='red')
-    return f'= {label}'
+        return click.style('- {}'.format(label), fg='red')
+    return '= {}'.format(label)
 
 
 def print_report(report):
@@ -170,19 +170,19 @@ def print_report(report):
 
     report: Report to be printed
     """
-    click.secho(f'REPO', nl=False, bold=True)
-    click.secho(f' {report.repo} - ', nl=False)
+    click.secho('REPO', nl=False, bold=True)
+    click.secho(' {} - '.format(report.repo), nl=False)
     if report.ok:
         click.secho('OK', fg='green', bold=True)
         for pr_link, result in report.prs.items():
-            click.secho(f'  PR', nl=False, bold=True)
-            click.secho(f' {pr_link} - ', nl=False)
+            click.secho('  PR', nl=False, bold=True)
+            click.secho(' {} - '.format(pr_link), nl=False)
             if result is None:
                 click.secho('FAIL', fg='red', bold=True)
             else:
                 click.secho('OK', fg='green', bold=True)
                 for label, t in result:
-                    click.echo(f'    {stylize_label_change(t, label)}')
+                    click.echo('    {}'.format(stylize_label_change(t, label)))
     else:
         click.secho('FAIL', fg='red', bold=True)
 
@@ -232,7 +232,7 @@ def check_reposlugs(reposlugs):
     """
     for reposlug in reposlugs:
         if len(reposlug.split('/')) != 2:
-            click.secho(f'Reposlug {reposlug} not valid!', err=True)
+            click.secho('Reposlug {} not valid!'.format(reposlug), err=True)
             exit(1)
 
 

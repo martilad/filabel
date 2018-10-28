@@ -38,7 +38,7 @@ class GitHub:
         """
         Get current user authenticated by token
         """
-        return self._paginated_json_get(f'{self.API}/user')
+        return self._paginated_json_get('{}/user'.format(self.API))
 
     def pull_requests(self, owner, repo, state='open', base=None):
         """
@@ -52,7 +52,7 @@ class GitHub:
         params = {'state': state}
         if base is not None:
             params['base'] = base
-        url = f'{self.API}/repos/{owner}/{repo}/pulls'
+        url = '{}/repos/{}/{}/pulls'.format(self.API, owner, repo)
         return self._paginated_json_get(url, params)
 
     def pr_files(self, owner, repo, number):
@@ -63,7 +63,7 @@ class GitHub:
         repo: repo name
         number: PR number/id
         """
-        url = f'{self.API}/repos/{owner}/{repo}/pulls/{number}/files'
+        url = '{}/repos/{}/{}/pulls/{}/files'.format(self.API, owner, repo, number)
         return self._paginated_json_get(url)
 
     def pr_filenames(self, owner, repo, number):
@@ -84,7 +84,7 @@ class GitHub:
         repo: repo name
         lables: all lables this PR will have
         """
-        url = f'{self.API}/repos/{owner}/{repo}/issues/{number}'
+        url = '{}/repos/{}/{}/issues/{}'.format(self.API, owner, repo, number)
         r = self.session.patch(url, json={'labels': labels})
         r.raise_for_status()
         return r.json()['labels']
